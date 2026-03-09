@@ -116,6 +116,9 @@ export const createServerAgentToolsEngine = (
     defaultToolIds,
     enableChecker: createEnableChecker({
       rules: {
+        // User-selected plugins
+        ...Object.fromEntries((agentConfig.plugins ?? []).map((id) => [id, true])),
+        // System-level rules (may override user selection for specific tools)
         [KnowledgeBaseManifest.identifier]: hasEnabledKnowledgeBases,
         [LocalSystemManifest.identifier]:
           !!deviceContext?.gatewayConfigured && !!deviceContext?.deviceOnline,

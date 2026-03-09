@@ -85,6 +85,8 @@ export const createAgentToolsEngine = (workingModel: WorkingModel) => {
   const searchConfig = getSearchConfig(workingModel.model, workingModel.provider);
   const agentState = getAgentStoreState();
 
+  const userPlugins = agentSelectors.currentAgentPlugins(agentState);
+
   return createToolsEngine({
     defaultToolIds,
     enableChecker: createEnableChecker({
@@ -102,6 +104,9 @@ export const createAgentToolsEngine = (workingModel: WorkingModel) => {
         return undefined; // fall through to rules
       },
       rules: {
+        // User-selected plugins
+        ...Object.fromEntries(userPlugins.map((id) => [id, true])),
+        // System-level rules (may override user selection for specific tools)
         [KnowledgeBaseManifest.identifier]: agentSelectors.hasEnabledKnowledgeBases(agentState),
         [MemoryManifest.identifier]: agentChatConfigSelectors.isMemoryToolEnabled(agentState),
         [WebBrowsingManifest.identifier]: searchConfig.useApplicationBuiltinSearchTool,

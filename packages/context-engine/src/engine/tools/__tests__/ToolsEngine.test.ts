@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { createEnableChecker } from '../enableCheckerFactory';
 import { ToolsEngine } from '../ToolsEngine';
 import type { LobeToolManifest } from '../types';
 
@@ -1054,6 +1055,100 @@ describe('ToolsEngine', () => {
         expect(result).toHaveLength(1);
         expect(result![0].function.name).toBe('plugin-1____api-1');
       });
+    });
+  });
+
+  describe('regression: only user-selected tools should be enabled', () => {
+    // Reproduces the bug where all 7 builtin tools show as enabled
+    // when user only selected "notebook"
+    const builtinManifests: LobeToolManifest[] = [
+      {
+        identifier: 'lobe-tools',
+        api: [{ name: 'activate', description: 'Activate tools', parameters: {} }],
+        meta: { title: 'Tools' },
+        type: 'builtin',
+      },
+      {
+        identifier: 'lobe-skills',
+        api: [{ name: 'run', description: 'Run skill', parameters: {} }],
+        meta: { title: 'Skills' },
+        type: 'builtin',
+      },
+      {
+        identifier: 'lobe-skill-store',
+        api: [{ name: 'search', description: 'Search skills', parameters: {} }],
+        meta: { title: 'Skill Store' },
+        type: 'builtin',
+      },
+      {
+        identifier: 'lobe-web-browsing',
+        api: [{ name: 'search', description: 'Web search', parameters: {} }],
+        meta: { title: 'Web Browsing' },
+        type: 'builtin',
+      },
+      {
+        identifier: 'lobe-knowledge-base',
+        api: [{ name: 'query', description: 'Query KB', parameters: {} }],
+        meta: { title: 'Knowledge Base' },
+        type: 'builtin',
+      },
+      {
+        identifier: 'lobe-user-memory',
+        api: [{ name: 'recall', description: 'Recall memory', parameters: {} }],
+        meta: { title: 'Memory' },
+        type: 'builtin',
+      },
+      {
+        identifier: 'lobe-notebook',
+        api: [{ name: 'write', description: 'Write note', parameters: {} }],
+        meta: { title: 'Notebook' },
+        type: 'builtin',
+      },
+    ];
+
+    it('should only enable notebook when user selected only notebook', () => {
+      const userSelectedPlugins = ['lobe-notebook'];
+      const defaultToolIds = [
+        'lobe-tools',
+        'lobe-skills',
+        'lobe-skill-store',
+        'lobe-web-browsing',
+        'lobe-knowledge-base',
+        'lobe-user-memory',
+      ];
+
+      // Build rules: user-selected plugins + system conditions
+      const rules: Record<string, boolean> = {
+        'lobe-knowledge-base': false, // no knowledge bases enabled
+        'lobe-user-memory': false, // memory disabled
+        'lobe-web-browsing': true, // search enabled
+        // User-selected plugins
+        ...Object.fromEntries(userSelectedPlugins.map((id) => [id, true])),
+      };
+
+      const engine = new ToolsEngine({
+        manifestSchemas: builtinManifests,
+        defaultToolIds,
+        enableChecker: createEnableChecker({ rules }),
+        functionCallChecker: () => true,
+      });
+
+      const result = engine.generateToolsDetailed({
+        toolIds: userSelectedPlugins,
+        model: 'gpt-4',
+        provider: 'openai',
+      });
+
+      // Only notebook + web-browsing should be enabled
+      // lobe-tools, lobe-skills, lobe-skill-store should NOT be enabled
+      // because user didn't select them and they have no explicit rule
+      expect(result.enabledToolIds).toContain('lobe-notebook');
+      expect(result.enabledToolIds).toContain('lobe-web-browsing');
+      expect(result.enabledToolIds).not.toContain('lobe-tools');
+      expect(result.enabledToolIds).not.toContain('lobe-skills');
+      expect(result.enabledToolIds).not.toContain('lobe-skill-store');
+      expect(result.enabledToolIds).not.toContain('lobe-knowledge-base');
+      expect(result.enabledToolIds).not.toContain('lobe-user-memory');
     });
   });
 
