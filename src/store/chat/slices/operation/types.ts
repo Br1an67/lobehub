@@ -16,6 +16,7 @@ export type OperationType =
   | 'continue' // Continue generation
 
   // === AI generation ===
+  | 'agentModeStream' // Agent mode SSE stream (server-side agent execution)
   | 'execAgentRuntime' // Execute agent runtime (client-side, entire agent runtime execution)
   | 'execServerAgentRuntime' // Execute server agent runtime (server-side, e.g., Group Chat)
   | 'createAssistantMessage' // Create assistant message (sub-operation of execAgentRuntime)
@@ -201,10 +202,22 @@ export interface OperationFilter {
  * Used for loading state indicators and animation in UI
  *
  * Includes:
+ * - agentModeStream: Agent mode SSE stream (server-side agent execution)
  * - execAgentRuntime: Client-side agent execution (single chat)
  * - execServerAgentRuntime: Server-side agent execution (Group Chat)
  */
 export const AI_RUNTIME_OPERATION_TYPES: OperationType[] = [
+  'agentModeStream',
   'execAgentRuntime',
   'execServerAgentRuntime',
+];
+
+/**
+ * Operation types that should block input and show loading state
+ * Superset of AI_RUNTIME_OPERATION_TYPES, also includes sendMessage
+ * since the input should be in loading state from the moment user sends until AI finishes
+ */
+export const INPUT_LOADING_OPERATION_TYPES: OperationType[] = [
+  ...AI_RUNTIME_OPERATION_TYPES,
+  'sendMessage',
 ];
